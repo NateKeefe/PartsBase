@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-
-using Scribe.Core.ConnectorApi.Exceptions;
 using Scribe.Core.ConnectorApi.ConnectionUI;
-using Scribe.Core.ConnectorApi.Cryptography;
 
 namespace CDK
 {
@@ -46,6 +42,7 @@ namespace CDK
         private const string HelpLink = "https://apiservices.partsbase.com/docs/index#/";
         #endregion
 
+        #region Form Definition Builders
         public static FormDefinition GetConnectionFormDefintion()
         {
 
@@ -66,7 +63,6 @@ namespace CDK
             return formDefinition;
         }
 
-        #region Form Definition Builders
         private static EntryDefinition BuildBaseUrlDefinition(int order)
         {
             var entryDefinition = new EntryDefinition

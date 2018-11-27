@@ -49,10 +49,10 @@ namespace CDK
 
         #region Connection
         public void Connection(IDictionary<string, string> propDictionary)
-        {
+        {            
+            //capture props from connection form
             if (propDictionary == null)
                 throw new InvalidConnectionException("Connection Properties are NULL");
-            //capture props
             var connectorProps = new ConnectionProperties();
             connectorProps.BaseUrl = getRequiredPropertyValue(propDictionary, ConnectionPropertyKeys.BaseUrl, ConnectionPropertyLabels.BaseUrl);
             connectorProps.AuthUrl = getRequiredPropertyValue(propDictionary, ConnectionPropertyKeys.AuthUrl, ConnectionPropertyLabels.AuthUrl);
@@ -60,56 +60,47 @@ namespace CDK
             connectorProps.Password = getRequiredPropertyValue(propDictionary, ConnectionPropertyKeys.Password, ConnectionPropertyLabels.Password);
             connectorProps.client_id = getRequiredPropertyValue(propDictionary, ConnectionPropertyKeys.ClientId, ConnectionPropertyLabels.ClientId);
             connectorProps.client_secret = getRequiredPropertyValue(propDictionary, ConnectionPropertyKeys.ClientSecret, ConnectionPropertyLabels.ClientSecret);
-
-            //tweak data coming in
+            //decrypt passwords coming in
             connectorProps.Password = Decryptor.Decrypt_AesManaged(connectorProps.Password, Connector.CryptoKey);
+            if (string.IsNullOrEmpty(connectorProps.Password))
+                throw new InvalidConnectionException(string.Format("A value is required for '{0}'", ConnectionPropertyLabels.Password));
             connectorProps.client_secret = Decryptor.Decrypt_AesManaged(connectorProps.client_secret, Connector.CryptoKey);
-
-            //remove slash for future concate calls
+            if (string.IsNullOrEmpty(connectorProps.client_secret))
+                throw new InvalidConnectionException(string.Format("A value is required for '{0}'", ConnectionPropertyLabels.ClientSecret));
+            //remove slash for future concate calls on URLs
             if (connectorProps.BaseUrl.ToString().EndsWith("/"))
             { connectorProps.BaseUrl = connectorProps.BaseUrl.Remove(connectorProps.BaseUrl.Length - 1); }
             if (connectorProps.AuthUrl.ToString().EndsWith("/"))
             { connectorProps.AuthUrl = connectorProps.AuthUrl.Remove(connectorProps.AuthUrl.Length - 1); }
-
-            // re-check unencrypted
-            if (string.IsNullOrEmpty(connectorProps.Password))
-                throw new InvalidConnectionException(string.Format("A value is required for '{0}'", ConnectionPropertyLabels.Password));
-            if (string.IsNullOrEmpty(connectorProps.client_secret))
-                throw new InvalidConnectionException(string.Format("A value is required for '{0}'", ConnectionPropertyLabels.ClientSecret));
             // now make an API call for the token
-
             var client = new RestClient(connectorProps.AuthUrl);
             client.Method = HttpVerb.POST;
             client.ContentType = "application/x-www-form-urlencoded";
             client.Accept = "application/json";
-
             //Http Auth input
             var form = new ConnectInput();
             form.client_id = connectorProps.client_id;
             form.client_secret = connectorProps.client_secret;
             form.Username = connectorProps.Username;
             form.Password = connectorProps.Password;
-
             //Convert to Form Data
             var formData = new FormUrlEncodedContent(form.ToKeyValue());
             client.PostData = formData.ReadAsStringAsync().Result;
-
-            //wait for async method and then make Http call
+            //wait for above async method to make Http call
             if(!string.IsNullOrEmpty(client.PostData))
             {
                 try
                 {
                     var result = client.MakeRequest("");
-                    
                     //if no exception, connect was successful
                     var output = JsonConvert.DeserializeObject<ConnectOutput>(result);
                     connectorProps.access_token = output.access_token;
                     connectorProps.expires_in = output.expires_in;
-
                     properties = connectorProps;
-                    LastConnected = DateTime.UtcNow;
-                    IsConnected = true;
+                    LastConnected = DateTime.UtcNow; //use this later for ensuring connection
+                    //for returning void on Connect
                     reflector = new Reflector(Assembly.GetExecutingAssembly());
+                    IsConnected = true;
                 }
                 catch (RESTRequestException ex)
                 {
@@ -125,7 +116,6 @@ namespace CDK
             var value = getPropertyValue(properties, key);
             if (string.IsNullOrEmpty(value))
                 throw new InvalidConnectionException(string.Format("A value is required for '{0}'", label));
-
             return value;
         }
 
@@ -141,18 +131,6 @@ namespace CDK
             IsConnected = false;
         }
 
-        //private void EnsureConnected()
-        //{
-        //    if (!LastConnected.HasValue)
-        //    {
-        //        Connect(properties);
-        //    }
-        //    else if ((DateTime.UtcNow - LastConnected) > TimeSpan.FromMinutes(9.0))
-        //    {
-        //        Disconnect();
-        //        Connect();
-        //    }
-        //}
         #endregion
 
         #region Operations
@@ -226,7 +204,6 @@ namespace CDK
         #region Query
         public IEnumerable<DataEntity> ExecuteQuery(Query query)
         {
-            //EnsureConnected();
             var entityName = query.RootEntity.ObjectDefinitionFullName;
             var constraints = BuildConstraintDictionary(query.Constraints);
 
@@ -247,22 +224,15 @@ namespace CDK
             client.Accept = "application/json";
             client.PostData = "";
             client.AuthToken = props.access_token;
+            client.EndPoint = buildRequestUrl(filters, entityName, props);
 
             switch (entityName)
             {
                 case EntityNames.RealTimeSearch:
-                    var uri = new UriBuilder(props.BaseUrl + "/search/RealTimeSearch");
-                    //build query string with filter inputs
-                    var queryBuilder = HttpUtility.ParseQueryString(string.Empty);
-                    foreach (var kvp in filters.ToDictionary(k => k.Key, k => k.Value.ToString()).ToArray())
-                        queryBuilder.Add(kvp.Key, kvp.Value);
-                    uri.Query = queryBuilder.ToString();
-                    
-                    client.EndPoint = uri.ToString();                    
                     try
                     {
                         var response = client.MakeRequest("");
-                        var data = JsonConvert.DeserializeObject<Models.RealTimeSearch.Rootobject>(response);
+                        var data = JsonConvert.DeserializeObject<T>(response);
                         return r.ToDataEntities(new[] { data }, query.RootEntity);
                     }
                     catch (RESTRequestException ex)
@@ -333,10 +303,31 @@ namespace CDK
             constraints.Add(constraintKey, exp.RightValue.Value.ToString());
         }
 
-        #endregion
+        private static string buildRequestUrl(Dictionary<string, object> filters, string entityName, ConnectionProperties props)
+        {
+            var uri = new UriBuilder(props.BaseUrl);
+            var queryBuilder = HttpUtility.ParseQueryString(string.Empty);
+            foreach (var kvp in filters.ToDictionary(k => k.Key, k => k.Value.ToString()).ToArray())
+                queryBuilder.Add(kvp.Key, kvp.Value);
 
-        #region Metadata
-        public IMetadataProvider GetMetadataProvider()
+            switch (entityName)
+            {
+                case EntityNames.RealTimeSearch:
+                    uri.Path = "/api/v1/search/RealTimeSearch";
+                    uri.Query = queryBuilder.ToString();
+                    return uri.ToString();
+                case "something else":
+                    uri.Path = props.BaseUrl + "else";
+                    uri.Query = queryBuilder.ToString();
+                    return uri.ToString();
+                default:
+                    throw new InvalidExecuteQueryException($"The {entityName} entity is not supported for query.");
+            }
+        }
+            #endregion
+
+            #region Metadata
+            public IMetadataProvider GetMetadataProvider()
         {
             return reflector.GetMetadataProvider();
         }

@@ -111,12 +111,9 @@ namespace CDK
             {
                 try
                 {
-                    // validate & get connection properties
-                    //var connectionProps = ConnectionHelper.GetConnectionProperties(properties);
 
                     if (service == null)
                         service = new ConnectorService();
-
                     service.Connection(properties);
                 }
                 catch (InvalidConnectionException)
