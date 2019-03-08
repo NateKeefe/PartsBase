@@ -209,6 +209,7 @@ namespace CDK
 
             switch (entityName)
             {
+                case EntityNames.Items:
                 case EntityNames.RealTimeSearch:
                     return QueryApi<Models.RealTimeSearch.Rootobject>
                         (query, reflector, constraints, entityName, client, properties);
@@ -233,6 +234,23 @@ namespace CDK
                     {
                         var response = client.MakeRequest("");
                         var data = JsonConvert.DeserializeObject<T>(response);
+                        return r.ToDataEntities(new[] { data }, query.RootEntity);
+                    }
+                    catch (RESTRequestException ex)
+                    {
+                        Logger.Write(Logger.Severity.Error,
+                            $"Error on query for entity: {entityName}.", ex.InnerException.Message);
+                        throw new InvalidExecuteQueryException($"Error on query for {entityName}: " + ex.Message);
+                    }
+                case EntityNames.Items:
+                    try
+                    {
+                        var response = client.MakeRequest("");
+                        dynamic data = JsonConvert.DeserializeObject<Models.Items.Rootobject>(response);
+                        foreach(var item in data)
+                        {
+
+                        }
                         return r.ToDataEntities(new[] { data }, query.RootEntity);
                     }
                     catch (RESTRequestException ex)
