@@ -68,16 +68,13 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>StringMessages.resx</DependentUpon>
     </Compile>
+    <Compile Include="ConnectorService.cs" />
     <Compile Include="Models\Connect.cs" />
     <Compile Include="Common\RESTRequestException.cs" />
     <Compile Include="Models\EntityNames.cs" />
     <Compile Include="Common\SimpleRest.cs" />
     <Compile Include="Models\Items.cs" />
-    <Compile Include="Models\myclass.cs" />
     <Compile Include="Models\RealTimeSearch.cs" />
-    <Compile Include="..\..\..\..\..\..\Service.cs">
-      <Link>Service.cs</Link>
-    </Compile>
     <Compile Include="Connector.cs" />
     <Compile Include="MetadataProvider.cs" />
     <Compile Include="ConnectionHelper.cs" />
