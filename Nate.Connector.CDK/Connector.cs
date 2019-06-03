@@ -111,7 +111,6 @@ namespace CDK
             {
                 try
                 {
-
                     if (service == null)
                         service = new ConnectorService();
                     service.Connection(properties);

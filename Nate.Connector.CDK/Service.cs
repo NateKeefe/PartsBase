@@ -342,10 +342,11 @@ namespace CDK
                     throw new InvalidExecuteQueryException($"The {entityName} entity is not supported for query.");
             }
         }
-            #endregion
 
-            #region Metadata
-            public IMetadataProvider GetMetadataProvider()
+        #endregion
+
+        #region Metadata
+        public IMetadataProvider GetMetadataProvider()
         {
             return reflector.GetMetadataProvider();
         }

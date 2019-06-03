@@ -5,7 +5,6 @@ using System;
 
 namespace CDK.Models.Items
 {
-
     public class Rootobject
     {
         public Item[] Items { get; set; }

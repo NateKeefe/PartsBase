@@ -39,7 +39,7 @@ namespace CDK
             public const string ClientSecret = "ClientSecret";
         }
 
-        private const string HelpLink = "https://apiservices.partsbase.com/docs/index#/";
+        private const string HelpLink = "https://apiservices.partsbase.com/docs/index/";
         #endregion
 
         #region Form Definition Builders

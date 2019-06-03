@@ -73,6 +73,7 @@
     <Compile Include="Models\EntityNames.cs" />
     <Compile Include="Common\SimpleRest.cs" />
     <Compile Include="Models\Items.cs" />
+    <Compile Include="Models\myclass.cs" />
     <Compile Include="Models\RealTimeSearch.cs" />
     <Compile Include="..\..\..\..\..\..\Service.cs">
       <Link>Service.cs</Link>
